@@ -1,6 +1,8 @@
 ﻿using System;
 using CommandLine;
-using CommandLine.Text;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace OldFileRemover
 {
@@ -19,9 +21,44 @@ namespace OldFileRemover
 
 		private static int Run(CommandLineOptions options)
 		{
-			Console.WriteLine($"Directory: \"{options.DirectoryPath}\"");
-			Console.WriteLine($"MaxDirectorySize: \"{options.MaxDirectorySize}\"");
-			Console.WriteLine($"ExcludeRegexes: \"{String.Join(", ", options.ExcludeRegexes)}\"");
+			var files = new DirectoryInfo(options.DirectoryPath)
+				.GetFileSystemInfos()
+				.Where(x => !options.ExcludeRegexes.Any(regex => Regex.IsMatch(x.Name, regex)))
+				.OrderBy(x => x.LastWriteTime)
+				.Select(x => new
+			{
+				Info = x,
+				Size = FileSizeCalculator.CalculateFileSize(x)
+			}).ToList();
+
+			var totalDirectorySize = files.Sum(x => x.Size);
+
+			Console.WriteLine($"Cleaning {options.DirectoryPath} ...");
+			Console.WriteLine($"\tMax allowed size: {options.MaxDirectorySize}");
+			Console.WriteLine($"\tCurrent size: {totalDirectorySize}");
+
+			while(totalDirectorySize > options.MaxDirectorySize && files.Any())
+			{
+				var entry = files.First();
+				files = files.Skip(1).ToList();
+
+				Console.WriteLine($"\t\tRemoving {entry.Info.Name} ...");
+
+				if(entry.Info.Attributes.HasFlag(FileAttributes.Directory))
+				{
+					Directory.Delete(entry.Info.FullName, recursive: true);
+				}
+				else
+				{
+					File.Delete(entry.Info.FullName);
+				}
+
+				totalDirectorySize -= entry.Size;
+
+				Console.WriteLine($"\t\tThe directory is now {totalDirectorySize} bytes.");
+			}
+
+			Console.WriteLine($"Finished");
 
 			return 0;
 		}
