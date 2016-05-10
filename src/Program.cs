@@ -34,8 +34,8 @@ namespace OldFileRemover
 			var totalDirectorySize = files.Sum(x => x.Size);
 
 			Console.WriteLine($"Cleaning {options.DirectoryPath} ...");
-			Console.WriteLine($"\tMax allowed size: {options.MaxDirectorySize}");
-			Console.WriteLine($"\tCurrent size: {totalDirectorySize}");
+			Console.WriteLine($"\tMax allowed size: {UserFriendlySizeFormatter.Format(options.MaxDirectorySize)}");
+			Console.WriteLine($"\tCurrent size: {UserFriendlySizeFormatter.Format(totalDirectorySize)}");
 
 			while(totalDirectorySize > options.MaxDirectorySize && files.Any())
 			{
