@@ -1,11 +1,77 @@
 # OldFileRemover
-**OldFileRemover** is an utility for removing old files from a directory. When executed the application will compare the size of directory to a specified quota. When the directory exceeds the quota, the application will start to remove files starting from the oldest till the quota is meet.
+**OldFileRemover** is a (.NET) command line utility for removing old files from a directory. When executed the application will compare the size of directory to a specified quota. When the directory exceeds the quota, the application will start to remove files starting from the oldest untill the quota is met.
 
+# Compatability
+**OldFileRemover** is written in .NET without using any OS-specific system calls or features, therefore, it should work on any OS you can install .NET or mono on.
+
+# Installation
+You don't really install it - you just copy the executable anywhere you want and then invoke it with mono or .NET but you have to build it from source code first as there is no precompiled version released.
+
+# Building (on Ubuntu 20.04 this has been tested)
+NOTE: As of now, the default Ubuntu 20.04 (and higher) repo version of mono-complete 6.8 doesn't include msbuild, mono-roslyn, etc., so adding the mono repo to apt must be done if you want to use msbuild instead of the deprecated xbuild.
+
+###1) Add the Official mono gpg signing key to Ubuntu 20.04 "THE RIGHT WAY", using the `gpg` method instead of using the deprecated `apt-key` method (this doesn't need to be done on Ubuntu 18 or lower).
+```
+wget -O - https://download.mono-project.com/repo/xamarin.gpg | gpg --dearmor | sudo tee /etc/apt/keyrings/xamarin-mono-archive.gpg >/dev/null
+```
+###2) Add the Official Mono repository `sources.list` to `/etc/apt/sources.list.d/`
+```
+echo "deb [signed-by=/etc/apt/keyrings/xamarin-mono-archive.gpg]  https://download.mono-project.com/repo/ubuntu stable-focal main" \
+  | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
+```
+###3) Install dependancies mono, nuget, unzip, and wget
+```
+sudo apt update && sudo apt install mono-complete nuget unzip wget
+```
+###3) Download the code to your home folder
+```
+wget -O $HOME/OldFileRemover.zip https://github.com/Strachu/OldFileRemover/archive/refs/heads/master.zip
+```
+###4) Unzip the downloaded file
+```
+unzip $HOME/OldFileRemover.zip
+```
+###5) Restore from the unzipped master directory
+```
+nuget restore $HOME/OldFileRemover-master/src/OldFileRemover.sln
+```
+###6) Build your release with msbuild
+```
+msbuild /p:Configuration=Release "$HOME/OldFileRemover-master/src/OldFileRemover.sln"
+```
+###7) Copy the directory (it contains the executable) bin/Release anywhere you want, for example to `/usr/local/bin` 
+```
+mv $HOME/OldFileRemover-master/bin/Release $HOME/OldFileRemover-master/bin/OldFileRemover && sudo cp -r $HOME/OldFileRemover-master/bin/OldFileRemover /usr/local/bin
+```
+###8) You can then just invoke `mono /path/to/OldFileRemover.exe` to execute the utility - you can see the example invocation in a readme.
+```
+mono /usr/local/bin/OldFileRemover/OldFileRemover.exe
+```
 # Usage example
-To automatically run the application every hour on Linux use cron.
-
-Firstly start `crontab -e` command, the add the following line at the end of file:
-
-0 * * * * `/usr/bin/mono /path/OldFileRemover.exe --exclude "^\." --max-size 1073741824 /path/to/directory`
-
-This will make the application run every hour starting from 1:00, removing files from directory on path /path/to/directory when its size exceeds 1GiB. The files starting with a dot will be ignored.
+To automatically run the application every hour on Linux use cron, open up crontab 
+```
+crontab -e 
+```
+or for crontab as root
+```
+sudo crontab -e
+```
+Add the add the following line at the end of file:
+```
+0 * * * * `/usr/bin/mono /path/to/OldFileRemover.exe --max-size 1073741824 /path/to/watched/directory`
+```
+This will make the application run every hour, removing files from directory `/path/to/watched/directory` when its size exceeds 1GiB, where no files are ignored.
+or...
+```
+0 * * * * `/usr/bin/mono /path/to/OldFileRemover.exe --exclude "^\." --max-size 1073741824 /path/to/watched/directory`
+```
+This will make the application run every hour, removing files from directory `/path/to/watched/directory` when its size exceeds 1GiB, where files starting with a dot (`.dotfile`) will be ignored.
+# Add the directory to your $PATH
+If you want the application to be in your $PATH just add a shell wrapper in a /usr/local/bin which calls it.
+# Caveats
+For an official release to be made, a few caveats to be addressed:
+1) The utility just stops with an error if there is some file / directory to which it has no permissions to enter or remove. It doesn't really handle any symbolic or hard link - .NET doesn't really have any API related to symlinks - for now I've no idea what would happen if there would be symlinks in working directory,
+2) The utility definitely works as i'm using it personally for removal of old camera recordings on my RPI but that's just a flat directory with only files inside. I wouldn't recommend it for complex directories outside of your control, simple directories with either flat or hierarchical structure with files automatically generated by some service are fine but anything user created less so.
+3) Keep also in mind that the utility doesn't work recursively - yes it will calculate the size of a subdirectory and remove it along with its files but it only checks the modification date of the subdirectory (which probably isn't updated anyway) and either removes it entirely or not at all - it doesn't remove single files from subdirectories.
+# Additional Notes
+I've just written the code for my use case and just happened to release the code in case someone wanted to use it. I only publish executables when I'm sure the application works for any intended use-case. Since I dont consider the app stable enough or feature complete, no official release version has been created.
